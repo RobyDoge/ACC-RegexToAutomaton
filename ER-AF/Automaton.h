@@ -13,12 +13,14 @@ public:
 	RegularExpression GetRegularExpression();
 
 private:
+	RegularExpression FindRegularExpression();
 	void CreateNewInitialAndFinalStates();
-	void CreateNewTransitions(const string& stateToEliminate, const std::map<std::string, std::string>& connectedStates);
+	void CreateNewTransitions(const string& stateToEliminate, const std::multimap<std::string, std::string>& connectedStates);
 	void EraseState(const string& stateToEliminate);
 	void EraseNextState();
 	RegularExpression FindRegExTransition(const string& fromState, const string& toState) const;
-	std::map<string, string> FindConnectedStates(const string& bridgeState) const;
+	static void EliminateDuplicates(std::multimap<string, string>& connectedStates);
+	std::multimap<string, string> FindConnectedStates(const string& bridgeState) const;
 
 private:
 	std::set<string> m_states;

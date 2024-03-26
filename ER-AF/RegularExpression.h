@@ -17,7 +17,7 @@ public:
 	string GetPattern() const;
 	bool operator==(const RegularExpression& other) const;
 	friend std::ostream& operator<<(std::ostream& os, const RegularExpression& obj);
-	
+	RegularExpression AddParentheses() const;
 
 private:
 	std::regex m_regexPattern{};

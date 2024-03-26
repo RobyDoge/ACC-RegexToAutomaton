@@ -23,6 +23,20 @@ bool RegularExpression::IsWordAccepted(const string& word) const
 
 RegularExpression RegularExpression::Concatenate(const RegularExpression& other) const
 {
+
+	if(m_pattern=="$"&& other.m_pattern=="$")
+	{
+				return { other.m_pattern};
+	}
+	if(m_pattern == "$")
+	{
+		return {other.m_pattern};
+	}
+
+	if (other.m_pattern == "$")
+	{
+		return { m_pattern };
+	}
 	return { m_pattern + other.m_pattern };
 }
 
@@ -70,6 +84,23 @@ string RegularExpression::GetPattern() const
 bool RegularExpression::operator==(const RegularExpression& other) const
 {
 		return m_pattern ==other.m_pattern;
+}
+
+RegularExpression RegularExpression::AddParentheses() const
+{
+		if(m_pattern.empty())
+		{
+					return { m_pattern};
+	}
+	if(m_pattern.size()==1)
+	{
+				return { m_pattern};
+	}
+	if(m_pattern[0] == '(' && m_pattern[m_pattern.size()-1] == ')')
+	{
+				return { m_pattern};
+	}
+	return { "(" + m_pattern + ")" };
 }
 
 std::ostream& operator<<(std::ostream& os, const RegularExpression& obj)

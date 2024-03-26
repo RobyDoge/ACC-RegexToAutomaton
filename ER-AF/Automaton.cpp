@@ -71,7 +71,32 @@ RegularExpression Automaton::GetRegularExpression()
 	{
 		EraseNextState();
 	}
-	return m_transitions.begin()->second.first;
+	return FindRegularExpression();
+}
+
+RegularExpression Automaton::FindRegularExpression()
+{
+	if(m_transitions.size() == 1)
+	{
+		return m_transitions.begin()->second.first;
+	}
+
+	bool foundNullTransition{ false };
+	for (const auto& [symbol, toState] : m_transitions| std::views::values)
+	{
+		if (symbol.GetPattern().empty())
+		{
+			foundNullTransition = true;
+			break;
+		}
+	}
+	for (const auto& [symbol, toState] : m_transitions | std::views::values)
+	{
+		if (!symbol.GetPattern().empty() && foundNullTransition==true)
+		{
+			return { "(" + symbol.GetPattern() + ")*" };
+		}
+	}
 }
 
 void Automaton::CreateNewInitialAndFinalStates()
@@ -82,10 +107,10 @@ void Automaton::CreateNewInitialAndFinalStates()
 	m_states.insert(newStartState);
 	m_states.insert(newFinalState);
 
-	m_transitions.insert({ newStartState,{RegularExpression(""),m_startState}});
+	m_transitions.insert({ newStartState,{RegularExpression("$"),m_startState}});
 	std::ranges::for_each(m_finalStates, [this,&newFinalState](const string& finalState)
 	{
-		m_transitions.insert({finalState,{RegularExpression(""),newFinalState}});
+		m_transitions.insert({finalState,{RegularExpression("$"),newFinalState}});
 	});
 	m_startState= newStartState;
 	m_finalStates.clear();
@@ -109,9 +134,9 @@ void Automaton::EraseNextState()
 
 
 
-std::map<string,string> Automaton::FindConnectedStates(const string& bridgeState) const
+std::multimap<string,string> Automaton::FindConnectedStates(const string& bridgeState) const
 {
-	std::map<string,string> connectedStates;
+	std::multimap<string,string> connectedStates;
 
 	for(const auto& [fromState, symbol_toState] : m_transitions)
 	{
@@ -127,28 +152,31 @@ std::map<string,string> Automaton::FindConnectedStates(const string& bridgeState
 			}
 		}
 	}
+	EliminateDuplicates(connectedStates);
 
 	return connectedStates;
 }
 
 void Automaton::CreateNewTransitions(const string& stateToEliminate,
-	const std::map<std::string, std::string>& connectedStates)
+	const std::multimap<std::string, std::string>& connectedStates)
 {
 	std::ranges::for_each(connectedStates, [this, &stateToEliminate](const auto& pair)
 		{
 			auto [fromState, toState] = pair;
-			auto pq = FindRegExTransition(fromState, toState);
-			auto pk = FindRegExTransition(fromState, stateToEliminate);
-			auto kk = FindRegExTransition(stateToEliminate, stateToEliminate);
-			auto qk = FindRegExTransition(stateToEliminate, toState);
+			auto pq = FindRegExTransition(fromState, toState).AddParentheses();
+			auto pk = FindRegExTransition(fromState, stateToEliminate).AddParentheses();
+			auto kk = FindRegExTransition(stateToEliminate, stateToEliminate).AddParentheses();
+			auto qk = FindRegExTransition(stateToEliminate, toState).AddParentheses();
 
 			bool directConnectionExists = true;
 			if(pq == RegularExpression(""))
 				directConnectionExists=false;
 
 			kk = kk.KleeneStar();
+			pk.AddParentheses();
 			pk = pk.Concatenate(kk);
 			pk = pk.Concatenate(qk);
+			/*pk = pk.AddParentheses();*/
 			auto newTransition = pq.Union(pk);
 
 			if (directConnectionExists)
@@ -207,4 +235,22 @@ RegularExpression Automaton::FindRegExTransition(const string& fromState, const 
 		newTransition = newTransition.Union(transition);
 	}
 	return {"("+newTransition.GetPattern() + ")"};
+}
+
+void Automaton::EliminateDuplicates(std::multimap<string, string>& connectedStates)
+{
+	std::map<string, std::set<string>> uniqueConnectedStates;
+	for (const auto& [fromState, toState] : connectedStates)
+	{
+		uniqueConnectedStates[fromState].insert(toState);
+	}
+	connectedStates.clear();
+
+	for(const auto& [fromState, toStates] : uniqueConnectedStates)
+	{
+		for (const auto& toState : toStates)
+		{
+			connectedStates.insert({fromState, toState});
+		}
+	}
 }
